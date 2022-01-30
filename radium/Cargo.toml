@@ -1,0 +1,24 @@
+[package]
+name = "radium"
+version = "0.5.3"
+authors = [
+    "Nika Layzell <nika@thelayzells.com>",
+    "myrrlyn <self@myrrlyn.dev>"
+]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/mystor/radium"
+homepage = "https://github.com/mystor/radium"
+documentation = "https://docs.rs/radium"
+description = "Helper traits for working with maybe-atomic values"
+keywords = ["atomic", "cell", "sync", "generic", "trait"]
+categories = ["concurrency", "no-std"]
+
+include = ["src/**/*.rs", "Cargo.toml", "README.md", "build.rs"]
+
+edition = "2018"
+
+[dependencies]
+
+[dev-dependencies]
+static_assertions = "1"

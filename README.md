@@ -1,0 +1,3 @@
+# Kill Your Phone
+
+KYP is a project that aims to help you kill your cell phone and replace it with an open-source alternative, currently in the planning and proof of concept stage of development. KYP does not aim to create a device, instead focusing on reusing existing feature phone hardware whenever possible. Hobbyist or small-run production hardware will never be able to compete with the fit and finish of obsolete feature phones and it's less wasteful to just reuse these devices instead of throwing them away. The first target will be a Nokia 5110-series device but ports should be possible.
