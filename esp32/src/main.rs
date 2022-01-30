@@ -1,3 +1,4 @@
+mod kv_store;
 mod rt_system;
 mod wifi;
 
@@ -7,20 +8,27 @@ use bricc::{
     network::wifi::{WifiModule, WifiModuleInterface},
     Bricc,
 };
+use esp_idf_svc::nvs::EspDefaultNvs;
 use wifi::{EspWifiModule, EspWifiModuleInterface};
 
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
-use crate::rt_system::EspRtSystemControl;
+use crate::{kv_store::EspKvStore, rt_system::EspRtSystemControl};
 
 fn main() {
     esp_idf_sys::link_patches();
 
     println!("Bricc booted");
     println!("Starting wifi");
+
+    let default_nvs = Arc::new(match EspDefaultNvs::new() {
+        Ok(nvs) => nvs,
+        Err(_) => panic!("Couldn't create EspDefaultNvs"),
+    });
+
     #[allow(unused)]
-    let wifi_module = EspWifiModule::init();
+    let wifi_module = EspWifiModule::init(default_nvs.clone());
     println!("Wifi up and running");
     println!("Starting telnet session");
     if wifi_module
@@ -37,7 +45,8 @@ fn main() {
             max_fds: 50,
             ..Default::default()
         })
-    });
+    })
+    .unwrap();
 
     #[cfg(feature = "telnet")]
     let (mut display_module, input_module_interface) = {
@@ -52,7 +61,11 @@ fn main() {
     };
 
     #[cfg(feature = "telnet")]
-    let mut bricc_system = Bricc::new::<TelnetModule>(wifi_module, input_module_interface);
+    let mut bricc_system = Bricc::new::<TelnetModule>(
+        EspKvStore::new(default_nvs.clone()),
+        wifi_module,
+        input_module_interface,
+    );
 
     loop {
         #[cfg(feature = "telnet")]

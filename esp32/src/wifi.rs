@@ -79,7 +79,7 @@ impl WifiModuleInterface for EspWifiModuleInterface {
 }
 
 impl EspWifiModule {
-    pub fn init() -> EspWifiModule {
+    pub fn init(default_nvs: Arc<EspDefaultNvs>) -> EspWifiModule {
         let (command_sender, command_receiver) = mpsc::channel::<WifiCommand>();
         let (status_sender, status_receiver) = mpsc::sync_channel::<WifiStatus>(0);
         let thread_builder = thread::Builder::new().stack_size(WIFI_THREAD_STACK_SIZE_BYTES);
@@ -96,10 +96,6 @@ impl EspWifiModule {
                     let sys_loop_stack = Arc::new(match EspSysLoopStack::new() {
                         Ok(stack) => stack,
                         Err(_) => panic!("Couldn't create EspSysLoopStack"),
-                    });
-                    let default_nvs = Arc::new(match EspDefaultNvs::new() {
-                        Ok(nvs) => nvs,
-                        Err(_) => panic!("Couldn't create EspDefaultNvs"),
                     });
 
                     let mut esp_wifi =

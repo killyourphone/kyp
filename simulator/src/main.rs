@@ -7,11 +7,13 @@ use embedded_graphics_simulator::{
 };
 
 use bricc::{debug::telnet::TelnetModule, network::wifi::WifiModule};
+use kv_store::SimKvStore;
 
 mod dummy_rt_system;
 mod dummy_wifi;
 
 mod input;
+mod kv_store;
 
 use crate::input::SimulatorInput;
 use dummy_wifi::{DummyWifiInterface, DummyWifiModule};
@@ -26,8 +28,11 @@ fn main_simulator() -> Result<(), core::convert::Infallible> {
     let mut win = Window::new("Hello World", &output_settings);
 
     let (input_impl, sender) = SimulatorInput::new();
-    let mut bricc_system =
-        bricc::Bricc::new::<SimulatorDisplay<BinaryColor>>(DummyWifiModule::new(), input_impl);
+    let mut bricc_system = bricc::Bricc::new::<SimulatorDisplay<BinaryColor>>(
+        SimKvStore::new(),
+        DummyWifiModule::new(),
+        input_impl,
+    );
 
     loop {
         win.update(&display);
@@ -52,8 +57,11 @@ fn main_telnet() -> Result<(), core::convert::Infallible> {
 
     thread::sleep(Duration::from_millis(1000));
 
-    let mut bricc_system =
-        bricc::Bricc::new::<SimulatorDisplay<BinaryColor>>(DummyWifiModule::new(), input_interface);
+    let mut bricc_system = bricc::Bricc::new::<SimulatorDisplay<BinaryColor>>(
+        SimKvStore::new(),
+        DummyWifiModule::new(),
+        input_interface,
+    );
 
     loop {
         bricc_system.bricc_loop(&mut display);

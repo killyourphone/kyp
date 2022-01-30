@@ -6,6 +6,7 @@ pub mod display;
 pub mod gui;
 pub mod input;
 pub mod network;
+pub mod prefs;
 pub mod realtime;
 pub mod traits;
 pub mod voip;
@@ -15,36 +16,44 @@ use std::time::Duration;
 use embedded_graphics::{
     draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::OriginDimensions,
 };
+use input::traits::InputModule;
+use network::wifi::WifiModule;
 use voip::sip::generate_register;
 
-use crate::gui::{
-    panes::lockscreen::RootPane,
-    traits::{GuiElement, Pane},
+use crate::{
+    gui::{
+        panes::lockscreen::RootPane,
+        traits::{GuiElement, Pane},
+    },
+    prefs::kv_store::KvStore,
 };
 
-pub struct Bricc<
-    WifiModuleImpl: network::wifi::WifiModule,
-    InputModuleImpl: input::traits::InputModule,
-> {
+pub struct Bricc<KvStoreImpl: KvStore, WifiModuleImpl: WifiModule, InputModuleImpl: InputModule> {
     root_pane: RootPane,
     wifi_module: WifiModuleImpl,
     input_module: InputModuleImpl,
+    kv_store: KvStoreImpl,
     screen_needs_update: bool,
 }
 
-impl<WifiModuleImpl: network::wifi::WifiModule, InputModuleImpl: input::traits::InputModule>
-    Bricc<WifiModuleImpl, InputModuleImpl>
+impl<
+        KvStoreImpl: KvStore,
+        WifiModuleImpl: network::wifi::WifiModule,
+        InputModuleImpl: input::traits::InputModule,
+    > Bricc<KvStoreImpl, WifiModuleImpl, InputModuleImpl>
 {
     pub fn new<Display: OriginDimensions + DrawTarget<Color = BinaryColor>>(
-        mut wifi_impl: WifiModuleImpl,
-        mut input_impl: InputModuleImpl,
-    ) -> Bricc<WifiModuleImpl, InputModuleImpl> {
-        println!("Bricc booted");
+        kv_store: KvStoreImpl,
+        wifi_impl: WifiModuleImpl,
+        input_impl: InputModuleImpl,
+    ) -> Bricc<KvStoreImpl, WifiModuleImpl, InputModuleImpl> {
+        println!("Bricc::new");
 
         Bricc {
             root_pane: RootPane::new::<Display>(),
             wifi_module: wifi_impl,
             input_module: input_impl,
+            kv_store,
             screen_needs_update: true,
         }
     }
