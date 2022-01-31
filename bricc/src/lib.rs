@@ -82,6 +82,17 @@ impl<
                 None => break,
             }
         }
+        match self.root_pane.tick() {
+            gui::traits::GuiAction::ScreenUpdated => self.screen_needs_update = true,
+            gui::traits::GuiAction::InvalidInput => {
+                // TODO beep
+            }
+            gui::traits::GuiAction::PopPane => {
+                self.root_pane.pop_deepest();
+                self.screen_needs_update = true;
+            }
+            gui::traits::GuiAction::Nothing => {}
+        }
         if self.screen_needs_update {
             self.screen_needs_update = false;
             display.clear(BinaryColor::Off);

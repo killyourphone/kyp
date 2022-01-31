@@ -22,5 +22,5 @@ pub trait Pane: Send {
     ) -> GuiAction;
     fn is_preventing_lock(&self) -> bool;
     fn tick(&mut self) -> GuiAction;
-    fn pop_deepest(&mut self);
+    fn pop_deepest(&mut self) -> bool;
 }

@@ -90,11 +90,23 @@ impl Pane for MainMenuPane {
     }
 
     fn tick(&mut self) -> GuiAction {
-        GuiAction::Nothing
+        match &mut self.child_pane {
+            ChildPane::Contacts(c) => c.tick(),
+            ChildPane::Settings(s) => s.tick(),
+            ChildPane::None => GuiAction::Nothing,
+        }
     }
 
-    fn pop_deepest(&mut self) {
-        self.child_pane = ChildPane::None;
+    fn pop_deepest(&mut self) -> bool {
+        let child_did_pop = match &mut self.child_pane {
+            ChildPane::Contacts(p) => p.pop_deepest(),
+            ChildPane::Settings(p) => p.pop_deepest(),
+            ChildPane::None => return false,
+        };
+        if !child_did_pop {
+            self.child_pane = ChildPane::None;
+        }
+        true
     }
 }
 

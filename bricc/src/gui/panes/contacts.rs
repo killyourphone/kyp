@@ -11,32 +11,51 @@ use crate::gui::traits::GuiElement;
 use crate::gui::traits::Pane;
 use crate::input::traits::UserInput;
 
+use super::edit_contact_pane::EditContactPane;
+
+#[derive(Clone)]
+enum ContactsPaneItem {
+    Contact(Contact),
+    AddNewButton,
+}
+
+impl ToString for ContactsPaneItem {
+    fn to_string(&self) -> String {
+        match self {
+            ContactsPaneItem::Contact(contact) => contact.name.clone(),
+            ContactsPaneItem::AddNewButton => "Add New".into(),
+        }
+    }
+}
+
+impl MenuElement for ContactsPaneItem {
+    fn menu_item_type(&self) -> MenuElementType {
+        match self {
+            ContactsPaneItem::Contact(contact) => MenuElementType::Callable,
+            ContactsPaneItem::AddNewButton => MenuElementType::Button,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Contact {
-    name: String,
-}
-
-impl ToString for Contact {
-    fn to_string(&self) -> String {
-        return self.name.clone();
-    }
-}
-
-impl MenuElement for Contact {
-    fn menu_item_type(&self) -> MenuElementType {
-        return MenuElementType::Callable;
-    }
+    pub name: String,
+    pub phone_number: String,
 }
 
 pub struct ContactsPane {
-    menu: Menu<Contact>,
+    menu: Menu<ContactsPaneItem>,
+    child: Option<EditContactPane>,
 }
 
 impl<Display: OriginDimensions + DrawTarget<Color = BinaryColor>> GuiElement<Display>
     for ContactsPane
 {
     fn render(&mut self, framebuffer: &mut Display) {
-        self.menu.render(framebuffer)
+        match &mut self.child {
+            Some(c) => c.render(framebuffer),
+            None => self.menu.render(framebuffer),
+        }
     }
 }
 
@@ -45,12 +64,21 @@ impl Pane for ContactsPane {
         &mut self,
         input: UserInput,
     ) -> GuiAction {
-        match self.menu.process_input(input) {
-            MenuInputEventResult::MenuItemSelected(item) => {
-                println!("Calling {}", item.name);
-                GuiAction::Nothing
-            }
-            MenuInputEventResult::WrappedGuiAction(action) => action,
+        match &mut self.child {
+            Some(c) => c.process_input::<Display>(input),
+            None => match self.menu.process_input(input) {
+                MenuInputEventResult::MenuItemSelected(item) => match item {
+                    ContactsPaneItem::Contact(contact) => GuiAction::Nothing,
+                    ContactsPaneItem::AddNewButton => {
+                        self.child = Some(EditContactPane::new::<Display>(Contact {
+                            name: "".into(),
+                            phone_number: "".into(),
+                        }));
+                        GuiAction::ScreenUpdated
+                    }
+                },
+                MenuInputEventResult::WrappedGuiAction(action) => action,
+            },
         }
     }
 
@@ -59,31 +87,47 @@ impl Pane for ContactsPane {
     }
 
     fn tick(&mut self) -> GuiAction {
-        GuiAction::Nothing
+        match &mut self.child {
+            Some(c) => c.tick(),
+            None => GuiAction::Nothing,
+        }
     }
 
-    fn pop_deepest(&mut self) {
-        todo!()
+    fn pop_deepest(&mut self) -> bool {
+        let child_did_pop = match &mut self.child {
+            Some(c) => c.pop_deepest(),
+            None => return false,
+        };
+        if !child_did_pop {
+            self.child = None;
+        }
+        true
     }
 }
 
 impl ContactsPane {
     pub fn new<Display: OriginDimensions + DrawTarget<Color = BinaryColor>>() -> ContactsPane {
         ContactsPane {
-            menu: Menu::<Contact>::new::<Display>(vec![
-                Contact {
+            menu: Menu::<ContactsPaneItem>::new::<Display>(vec![
+                ContactsPaneItem::Contact(Contact {
                     name: "John Smith".into(),
-                },
-                Contact {
+                    phone_number: "".into(),
+                }),
+                ContactsPaneItem::Contact(Contact {
                     name: "Jane Doe".into(),
-                },
-                Contact {
+                    phone_number: "".into(),
+                }),
+                ContactsPaneItem::Contact(Contact {
                     name: "Ellen Poe".into(),
-                },
-                Contact {
+                    phone_number: "".into(),
+                }),
+                ContactsPaneItem::Contact(Contact {
                     name: "Whoever Else".into(),
-                },
+                    phone_number: "".into(),
+                }),
+                ContactsPaneItem::AddNewButton,
             ]),
+            child: None,
         }
     }
 }

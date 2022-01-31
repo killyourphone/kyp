@@ -1,3 +1,4 @@
+#[derive(PartialEq)]
 pub enum UserInput {
     Number(u8),
     Star,

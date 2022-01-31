@@ -89,8 +89,8 @@ impl Pane for SettingsPane {
         GuiAction::Nothing
     }
 
-    fn pop_deepest(&mut self) {
-        todo!()
+    fn pop_deepest(&mut self) -> bool {
+        false
     }
 }
 

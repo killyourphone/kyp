@@ -47,11 +47,11 @@ impl Pane for RootPane {
     }
 
     fn tick(&mut self) -> GuiAction {
-        todo!()
+        self.child.tick()
     }
 
-    fn pop_deepest(&mut self) {
-        self.child.pop_deepest();
+    fn pop_deepest(&mut self) -> bool {
+        self.child.pop_deepest()
     }
 }
 
