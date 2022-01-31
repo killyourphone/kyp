@@ -27,12 +27,12 @@ fn main_simulator() -> Result<(), core::convert::Infallible> {
         .build();
     let mut win = Window::new("Hello World", &output_settings);
 
+    let mut kv = SimKvStore::new();
     let (input_impl, sender) = SimulatorInput::new();
-    let mut bricc_system = bricc::Bricc::new::<SimulatorDisplay<BinaryColor>>(
-        SimKvStore::new(),
-        DummyWifiModule::new(),
-        input_impl,
-    );
+    let mut bricc_system =
+        bricc::Bricc::new::<SimulatorDisplay<BinaryColor>>(kv, DummyWifiModule::new(), input_impl);
+
+    bricc_system.init();
 
     loop {
         win.update(&display);

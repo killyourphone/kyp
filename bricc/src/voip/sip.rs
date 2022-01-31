@@ -1,39 +1,103 @@
-pub fn generate_register() -> rsip::SipMessage {
+use std::{
+    net::IpAddr,
+    thread::{self, JoinHandle},
+    time::Duration,
+};
+
+use crate::prefs::kv_store::KvStore;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+
+const OUTGOING_PORT: u16 = 50606;
+const SIP_THREAD_STACK_SIZE_BYTES: usize = 16384usize;
+
+pub fn start_thread<KvStoreImpl: KvStore>(
+    kv_store: &mut KvStoreImpl,
+    external_ip: IpAddr,
+) -> Result<JoinHandle<()>, String> {
+    let enabled: bool = match kv_store.get("sip.0.en".into())? {
+        Some(val) => val,
+        None => false,
+    };
+
+    if !enabled {
+        return Err("SIP line disabled".into());
+    }
+
+    let user: String = {
+        match kv_store.get("sip.0.us".into())? {
+            Some(val) => val,
+            None => return Err("SIP line enabled but no user".into()),
+        }
+    };
+    let password: String = {
+        match kv_store.get("sip.0.pw".into())? {
+            Some(val) => val,
+            None => return Err("SIP line enabled but no pw".into()),
+        }
+    };
+    let domain: String = {
+        match kv_store.get("sip.0.dm".into())? {
+            Some(val) => val,
+            None => return Err("SIP line enabled but no domain".into()),
+        }
+    };
+    let builder = thread::Builder::new().stack_size(SIP_THREAD_STACK_SIZE_BYTES);
+    Ok(builder
+        .spawn(|| loop {
+            thread::sleep(Duration::from_secs(1));
+        })
+        .unwrap())
+}
+
+fn register(
+    user: String,
+    password: String,
+    domain: String,
+    external_ip: IpAddr,
+) -> Result<rsip::SipMessage, String> {
+    let display_name: String = "KYP".into();
+
+    let tag_bytes: [u8; 4] = rand::thread_rng().gen();
+    let tag_string = hex::encode(tag_bytes);
+    let branch_bytes: [u8; 4] = rand::thread_rng().gen();
+    let branch_string = hex::encode(tag_bytes);
+
     let mut headers: rsip::Headers = Default::default();
 
     let base_uri = rsip::Uri {
         scheme: Some(rsip::Scheme::Sips),
-        auth: Some(("bob", Option::<String>::None).into()),
-        host_with_port: rsip::Domain::from("biloxi.example.com").into(),
+        auth: Some((user, Some(password)).into()),
+        host_with_port: rsip::Domain::from(domain.clone()).into(),
         ..Default::default()
     };
+
+    println!("IP: {}", external_ip.to_string());
 
     headers.push(
         rsip::typed::Via {
             version: rsip::Version::V2,
             transport: rsip::Transport::Tls,
             uri: rsip::Uri {
-                host_with_port: (rsip::Domain::from("client.biloxi.example.com"), 5060).into(),
+                host_with_port: (rsip::Domain::from(external_ip.to_string()), OUTGOING_PORT).into(),
                 ..Default::default()
             },
-            params: vec![rsip::Param::Branch(rsip::param::Branch::new(
-                "z9hG4bKnashds7",
-            ))],
+            params: vec![rsip::Param::Branch(rsip::param::Branch::new(branch_string))],
         }
         .into(),
     );
     headers.push(rsip::headers::MaxForwards::default().into());
     headers.push(
         rsip::typed::From {
-            display_name: Some("Bob".into()),
+            display_name: Some(display_name.clone()),
             uri: base_uri.clone(),
-            params: vec![rsip::Param::Tag(rsip::param::Tag::new("a73kszlfl"))],
+            params: vec![rsip::Param::Tag(rsip::param::Tag::new(tag_string))],
         }
         .into(),
     );
     headers.push(
         rsip::typed::To {
-            display_name: Some("Bob".into()),
+            display_name: Some(display_name.clone()),
             uri: base_uri.clone(),
             params: Default::default(),
         }
@@ -57,50 +121,14 @@ pub fn generate_register() -> rsip::SipMessage {
     );
     headers.push(rsip::headers::ContentLength::default().into());
 
-    rsip::Request {
+    Ok(rsip::Request {
         method: rsip::Method::Register,
         uri: rsip::Uri {
             scheme: Some(rsip::Scheme::Sips),
-            host_with_port: rsip::Domain::from("ss2.biloxi.example.com").into(),
+            host_with_port: rsip::Domain::from(domain).into(),
             ..Default::default()
         },
         headers: headers,
-        version: rsip::Version::V2,
-        body: Default::default(),
-    }
-    .into()
-}
-
-pub fn create_unauthorized_from(request: rsip::Request) -> Result<rsip::SipMessage, rsip::Error> {
-    use rsip::prelude::*;
-
-    let mut headers: rsip::Headers = Default::default();
-    headers.push(request.via_header()?.clone().into());
-    headers.push(request.from_header()?.clone().into());
-    let mut to = request.to_header()?.typed()?;
-    to.with_tag("1410948204".into());
-    headers.push(to.into());
-    headers.push(request.call_id_header()?.clone().into());
-    headers.push(request.cseq_header()?.clone().into());
-    headers.push(rsip::Header::ContentLength(Default::default()));
-    headers.push(rsip::Header::Server(Default::default()));
-
-    headers.push(
-        rsip::typed::WwwAuthenticate {
-            realm: "atlanta.example.com".into(),
-            nonce: "ea9c8e88df84f1cec4341ae6cbe5a359".into(),
-            algorithm: Some(rsip::headers::auth::Algorithm::Md5),
-            qop: Some(rsip::headers::auth::Qop::Auth),
-            stale: Some("FALSE".into()),
-            opaque: Some("".into()),
-            ..Default::default()
-        }
-        .into(),
-    );
-
-    Ok(rsip::Response {
-        status_code: 401.into(),
-        headers,
         version: rsip::Version::V2,
         body: Default::default(),
     }

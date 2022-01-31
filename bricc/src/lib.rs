@@ -11,14 +11,17 @@ pub mod realtime;
 pub mod traits;
 pub mod voip;
 
-use std::time::Duration;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::Duration,
+};
 
 use embedded_graphics::{
     draw_target::DrawTarget, pixelcolor::BinaryColor, prelude::OriginDimensions,
 };
 use input::traits::InputModule;
 use network::wifi::WifiModule;
-use voip::sip::generate_register;
+use voip::sip::start_thread;
 
 use crate::{
     gui::{
@@ -57,19 +60,29 @@ impl<
             screen_needs_update: true,
         }
     }
+
+    pub fn init(&mut self) {
+        match start_thread::<KvStoreImpl>(
+            &mut self.kv_store,
+            IpAddr::V4(Ipv4Addr::new(76, 104, 182, 255)),
+        ) {
+            Ok(_) => println!("SIP thread started"),
+            Err(err) => println!("{}", err),
+        };
+    }
+
     pub fn bricc_loop<Display: OriginDimensions + DrawTarget<Color = BinaryColor>>(
         &mut self,
         display: &mut Display,
     ) {
         loop {
-            generate_register();
             match self.input_module.get_input() {
                 Some(user_input) => match self.root_pane.process_input::<Display>(user_input) {
                     gui::traits::GuiAction::ScreenUpdated => {
                         self.screen_needs_update = true;
                     }
                     gui::traits::GuiAction::InvalidInput => {
-                        todo!()
+                        // TODO beep
                     }
                     gui::traits::GuiAction::Nothing => {
                         continue;

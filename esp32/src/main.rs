@@ -67,6 +67,8 @@ fn main() {
         input_module_interface,
     );
 
+    bricc_system.init();
+
     loop {
         #[cfg(feature = "telnet")]
         bricc_system.bricc_loop(&mut display_module);
